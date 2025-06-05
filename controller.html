@@ -147,6 +147,20 @@
             width: 34.2vh; /* 5% smaller: was 36vh, now 34.2vh */
             height: 34.2vh;
             font-size: 11.4vh; /* 5% smaller: was 12vh, now 11.4vh */
+            
+            /* Fix for Apple device button movement */
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            outline: none;
+        }
+        
+        /* Prevent button bouncing on iOS */
+        .ctrl-btn:focus,
+        .ctrl-btn:active {
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .ctrl-btn:active {
@@ -344,7 +358,13 @@
             user-select: none; 
             -webkit-user-select: none; 
             -webkit-tap-highlight-color: transparent; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2); 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            
+            /* Fix for Apple device button movement */
+            -webkit-appearance: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+            outline: none;
         }
         .ctrl-btn.portrait-mode.steer, .ctrl-btn.portrait-mode.throttle { 
             background-color: #22c55e; 
@@ -363,6 +383,13 @@
         }
         .ctrl-btn.portrait-mode.active { 
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); 
+        }
+        
+        /* Prevent button bouncing on iOS for portrait mode */
+        .ctrl-btn.portrait-mode:focus,
+        .ctrl-btn.portrait-mode:active {
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         #disconnectButton { 
@@ -603,12 +630,16 @@
         let currentControls = { left: false, right: false, throttle: false, reverse: false };
         let currentCarIndex = 0;
 
-        // Car assets data
+        // Car assets data - EXPANDED to include all 8 cars
         const carAssets = [
             { id: 'Race_car_01', file: 'Race_car_01.png', displayName: 'SEDAN CLASSIC', description: 'A reliable and comfortable choice for new racers. Well-balanced handling with good fuel economy.' },
             { id: 'Race_car_02', file: 'Race_car_02.png', displayName: 'HATCHBACK SPORT', description: 'Compact yet peppy. Excellent for city racing with nimble cornering and quick acceleration.' },
             { id: 'Race_car_03', file: 'Race_car_03.png', displayName: 'SUV ENDURANCE', description: 'Built for tough conditions. Higher durability but heavier handling. Perfect for challenging tracks.' },
-            { id: 'Race_car_04', file: 'Race_car_04.png', displayName: 'COUPE PERFORMANCE', description: 'Sleek and fast. Lower fuel consumption but requires skilled handling. For experienced drivers.' }
+            { id: 'Race_car_04', file: 'Race_car_04.png', displayName: 'COUPE PERFORMANCE', description: 'Sleek and fast. Lower fuel consumption but requires skilled handling. For experienced drivers.' },
+            { id: 'Race_car_05', file: 'Race_car_05.png', displayName: 'WAGON UTILITY', description: 'Perfect blend of space and performance. Great for long races with excellent stability and comfort.' },
+            { id: 'Race_car_06', file: 'Race_car_06.png', displayName: 'CONVERTIBLE CRUISER', description: 'Style meets speed. Aerodynamic design with responsive handling for those who love the open road feel.' },
+            { id: 'Race_car_07', file: 'Race_car_07.png', displayName: 'MUSCLE BEAST', description: 'Raw power and aggressive styling. High acceleration but requires careful control around tight corners.' },
+            { id: 'Race_car_08', file: 'Race_car_08.png', displayName: 'SUPER SPEEDSTER', description: 'The ultimate racing machine. Maximum speed and precision handling for expert drivers only.' }
         ];
 
         const profanityList = ['noob', 'idiot', 'stupid', 'dumb', 'loser', 'hate', 'kill', 'die', 'suck', 'crap', 'damn'];
