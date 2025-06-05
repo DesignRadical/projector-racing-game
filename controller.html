@@ -559,6 +559,40 @@
         .rotation-message {
             display: none;
         }
+
+        /* AGGRESSIVE FIX: Directly target control buttons to prevent ANY movement on touch devices */
+        #leftBtn, #rightBtn, #forwardBtn, #reverseBtn,
+        #leftBtnPortrait, #rightBtnPortrait, #forwardBtnPortrait, #reverseBtnPortrait {
+            -webkit-transform: none !important;
+            transform: none !important;
+            -webkit-transition: none !important;
+            transition: none !important;
+            -webkit-animation: none !important;
+            animation: none !important;
+        }
+        
+        #leftBtn:active, #rightBtn:active, #forwardBtn:active, #reverseBtn:active,
+        #leftBtnPortrait:active, #rightBtnPortrait:active, #forwardBtnPortrait:active, #reverseBtnPortrait:active,
+        #leftBtn:focus, #rightBtn:focus, #forwardBtn:focus, #reverseBtn:focus,
+        #leftBtnPortrait:focus, #rightBtnPortrait:focus, #forwardBtnPortrait:focus, #reverseBtnPortrait:focus,
+        #leftBtn:hover, #rightBtn:hover, #forwardBtn:hover, #reverseBtn:hover,
+        #leftBtnPortrait:hover, #rightBtnPortrait:hover, #forwardBtnPortrait:hover, #reverseBtnPortrait:hover {
+            -webkit-transform: none !important;
+            transform: none !important;
+            -webkit-transition: none !important;
+            transition: none !important;
+            -webkit-animation: none !important;
+            animation: none !important;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.4) !important;
+        }
+        
+        /* Force hardware acceleration without transforms */
+        #leftBtn, #rightBtn, #forwardBtn, #reverseBtn,
+        #leftBtnPortrait, #rightBtnPortrait, #forwardBtnPortrait, #reverseBtnPortrait {
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            will-change: auto;
+        }
     </style>
 </head>
 <body>
