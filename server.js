@@ -100,10 +100,14 @@ const startingPositions = [
 ];
 let nextStartPositionIndex = 0;
 
-// Car physics constants - no change here unless desired
-const MAX_SPEED = 4.0; const MAX_REVERSE_SPEED = -1.8; const ACCELERATION = 0.08; 
-const REVERSE_ACCELERATION = 0.08; const DECELERATION = 0.07; const TURN_SPEED_FACTOR = 0.05;
-const DRIFT_FACTOR = 0.15; 
+// Car physics constants - REDUCED for more consistent cross-platform behavior
+const MAX_SPEED = 2.5; // Reduced from 4.0 to 2.5 (37.5% reduction to compensate for faster cloud execution)
+const MAX_REVERSE_SPEED = -1.2; // Reduced from -1.8 to -1.2
+const ACCELERATION = 0.05; // Reduced from 0.08 to 0.05
+const REVERSE_ACCELERATION = 0.05; // Reduced from 0.08 to 0.05
+const DECELERATION = 0.045; // Reduced from 0.07 to 0.045
+const TURN_SPEED_FACTOR = 0.035; // Reduced from 0.05 to 0.035 (30% reduction for less oversteering)
+const DRIFT_FACTOR = 0.12; // Reduced from 0.15 to 0.12
 const WALL_SLIDE_SPEED_REDUCTION = 0.8; // Changed from 0.5 to 0.8 - now keeps 80% speed instead of 50%
 const MIN_SLIDE_SPEED = 0.5; 
 const WALL_NUDGE_AWAY_FORCE = 0.003; // Reduced from 0.008 to 0.003 - almost no physical nudging
@@ -541,6 +545,11 @@ function gameTick() {
     const currentTime = Date.now();
     const deltaTime = currentTime - lastGameTick;
     lastGameTick = currentTime;
+    
+    // Debug timing information - log every 5 seconds
+    if (Math.floor(currentTime / 5000) !== Math.floor((currentTime - deltaTime) / 5000)) {
+        console.log(`Game Loop Stats - DeltaTime: ${deltaTime.toFixed(1)}ms, Target: ${TARGET_FRAME_TIME.toFixed(1)}ms, Ratio: ${(deltaTime/TARGET_FRAME_TIME).toFixed(2)}x`);
+    }
     
     players.forEach(player => { updatePlayerState(player, deltaTime); });
     const gameState = { 
