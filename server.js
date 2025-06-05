@@ -114,6 +114,11 @@ const BOUNCE_DURATION_MS = 400; // Reduced from 600 to 400 for shorter, more flu
 const BOUNCE_DURATION_FRAMES = Math.round(BOUNCE_DURATION_MS / GAME_TICK_RATE);
 const CURVE_ESCAPE_THRESHOLD = 0.3; // Speed threshold below which curve escape is easier
 
+// Frame rate independent timing
+const TARGET_FPS = 60; // Target 60 FPS for consistent physics
+const TARGET_FRAME_TIME = 1000 / TARGET_FPS; // 16.67ms per frame
+let lastGameTick = Date.now();
+
 // NEW: Track Center Magnetism - pulls cars back toward racing line when stuck in curves
 const TRACK_CENTER_MAGNETISM = 0.008; // Reduced from 0.015 to 0.008 - gentler position pull
 const CURVE_CENTER_ASSIST_THRESHOLD = 1.2; // Increased from 0.8 to 1.2 - activate at higher speeds
@@ -137,8 +142,13 @@ function normalizeAngle(angle) {
     return angle;
 }
 
-function updatePlayerState(player) {
+function updatePlayerState(player, deltaTime = TARGET_FRAME_TIME) {
     if (!player || !player.controls) return;
+    
+    // Calculate frame rate compensation factor
+    const frameTimeRatio = deltaTime / TARGET_FRAME_TIME;
+    const clampedRatio = Math.min(frameTimeRatio, 3.0); // Cap at 3x to prevent huge jumps
+    
     const previousPlayerX = player.x; const previousPlayerY = player.y;
     
     // Handle boost timing
@@ -179,19 +189,25 @@ function updatePlayerState(player) {
             let speedEffectOnTurn = (player.speed > 0) ? (player.speed / MAX_SPEED) : (Math.abs(player.speed) / Math.abs(MAX_REVERSE_SPEED)) * 0.7;
             speedEffectOnTurn = Math.max(0.3, Math.min(1.0, speedEffectOnTurn));
             let turnDirectionMultiplier = (player.speed >= 0) ? 1 : -1;
-            if (player.controls.left) player.angle -= visualTurnRate * speedEffectOnTurn * turnDirectionMultiplier;
-            if (player.controls.right) player.angle += visualTurnRate * speedEffectOnTurn * turnDirectionMultiplier;
+            if (player.controls.left) player.angle -= visualTurnRate * speedEffectOnTurn * turnDirectionMultiplier * clampedRatio;
+            if (player.controls.right) player.angle += visualTurnRate * speedEffectOnTurn * turnDirectionMultiplier * clampedRatio;
         }
     }
     player.angle = normalizeAngle(player.angle);
     
     let intendedSpeed = player.speed; 
     if (!player.isBouncing) { 
-        if (player.controls.throttle) intendedSpeed += ACCELERATION;
-        else if (player.controls.reverse) intendedSpeed -= REVERSE_ACCELERATION;
+        if (player.controls.throttle) intendedSpeed += ACCELERATION * clampedRatio;
+        else if (player.controls.reverse) intendedSpeed -= REVERSE_ACCELERATION * clampedRatio;
         else { 
-            if (intendedSpeed > 0) { intendedSpeed -= DECELERATION; if (intendedSpeed < 0) intendedSpeed = 0; } 
-            else if (intendedSpeed < 0) { intendedSpeed += DECELERATION; if (intendedSpeed > 0) intendedSpeed = 0; } 
+            if (intendedSpeed > 0) { 
+                intendedSpeed -= DECELERATION * clampedRatio; 
+                if (intendedSpeed < 0) intendedSpeed = 0; 
+            } 
+            else if (intendedSpeed < 0) { 
+                intendedSpeed += DECELERATION * clampedRatio; 
+                if (intendedSpeed > 0) intendedSpeed = 0; 
+            } 
         }
         intendedSpeed = Math.max(MAX_REVERSE_SPEED, Math.min(intendedSpeed, MAX_SPEED)); 
         
@@ -210,7 +226,7 @@ function updatePlayerState(player) {
     
     if (!player.isBouncing) { 
         const angleDifference = normalizeAngle(player.angle - player.velocityAngle);
-        let effectiveDriftFactor = DRIFT_FACTOR * (Math.abs(intendedSpeed) / MAX_SPEED);
+        let effectiveDriftFactor = DRIFT_FACTOR * (Math.abs(intendedSpeed) / MAX_SPEED) * clampedRatio;
         if (intendedSpeed < 0) effectiveDriftFactor *= 0.2; // Reduced from 0.5 to 0.2 - much less sensitive drift in reverse
         player.velocityAngle += angleDifference * effectiveDriftFactor; 
     }
@@ -218,8 +234,8 @@ function updatePlayerState(player) {
     
     const currentSpeedForMovement = player.isBouncing ? player.speed : intendedSpeed; 
     const movementAngleForTrig = player.velocityAngle - (Math.PI / 2);
-    let prospectiveX = player.x + Math.cos(movementAngleForTrig) * currentSpeedForMovement;
-    let prospectiveY = player.y + Math.sin(movementAngleForTrig) * currentSpeedForMovement;
+    let prospectiveX = player.x + Math.cos(movementAngleForTrig) * currentSpeedForMovement * clampedRatio;
+    let prospectiveY = player.y + Math.sin(movementAngleForTrig) * currentSpeedForMovement * clampedRatio;
     
     let collided = false; 
     let collisionNormalX = 0; 
@@ -521,7 +537,12 @@ function spawnBoost() {
 
 function gameTick() {
     if (players.size === 0) return;
-    players.forEach(player => { updatePlayerState(player); });
+    
+    const currentTime = Date.now();
+    const deltaTime = currentTime - lastGameTick;
+    lastGameTick = currentTime;
+    
+    players.forEach(player => { updatePlayerState(player, deltaTime); });
     const gameState = { 
         type: 'gameStateUpdate', 
         players: Array.from(players.values()),
@@ -532,6 +553,15 @@ function gameTick() {
     } else {
         broadcast(gameState);
     }
+}
+
+// More precise timing using setTimeout recursion instead of setInterval
+function startGameLoop() {
+    const nextTick = () => {
+        gameTick();
+        setTimeout(nextTick, GAME_TICK_RATE);
+    };
+    nextTick();
 }
 
 wss.on('connection', (ws, req) => {
@@ -651,6 +681,7 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
     console.log(`HTTP and WebSocket server started on port ${PORT}`);
     console.log(`Game tick rate: ${GAME_TICK_RATE}ms (~${Math.round(1000/GAME_TICK_RATE)} Hz)`);
+    console.log(`Target physics rate: ${TARGET_FPS} FPS (${TARGET_FRAME_TIME.toFixed(2)}ms per frame)`);
     if (ARTIFICIAL_INPUT_DELAY_MS > 0 || ARTIFICIAL_OUTPUT_DELAY_MS > 0) {
         console.warn(`ARTIFICIAL LATENCY ENABLED: Input delay=${ARTIFICIAL_INPUT_DELAY_MS}ms, Output delay=${ARTIFICIAL_OUTPUT_DELAY_MS}ms`);
     }
@@ -665,6 +696,9 @@ server.listen(PORT, () => {
     });
     console.log(`  Controller URL (example): http://<YOUR_LOCAL_IP_FROM_ABOVE>:${PORT}/controller.html`);
     console.log('Waiting for connections...');
-    setInterval(gameTick, GAME_TICK_RATE); 
+    
+    // Initialize timing and start game loop
+    lastGameTick = Date.now();
+    startGameLoop();
     setInterval(spawnBoost, BOOST_SPAWN_INTERVAL); // Spawn boosts every 15 seconds
 });
