@@ -777,17 +777,19 @@
         let animationFrameId = null;
         function gameLoop() { updateGame(); drawGame(); animationFrameId = requestAnimationFrame(gameLoop); }
         
-        function connectToServer() {
-            console.log("Host: connectToServer called.");
-            // Dynamic server address - works locally and on deployed platforms
-            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            const serverAddress = `${wsProtocol}//${window.location.hostname}:8080`;
+        function connectToWebSocket() {
+            if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+                console.log('WebSocket already connected or connecting');
+                return;
+            }
             
-            if(connectionStatusText) connectionStatusText.textContent = `Attempting to connect...`;
-            if(qrCodeContainer) qrCodeContainer.style.display = 'none';
-            if(connectionUrlDisplay) connectionUrlDisplay.textContent = '';
-
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+            const serverAddress = `${wsProtocol}//${window.location.hostname}:${currentPort}`;
+            
+            console.log(`Attempting to connect to: ${serverAddress}`);
             socket = new WebSocket(serverAddress);
+
             socket.onopen = () => {
                 console.log('Host: WebSocket onopen event fired.'); 
                 if(connectionStatusText) connectionStatusText.textContent = `Host Connected! Requesting server info...`;
@@ -861,7 +863,7 @@
                 if(leaderboard) leaderboard.style.display = 'block'; 
                 gameInitialized = true; 
                 resizeCanvas(); 
-                connectToServer();
+                connectToWebSocket();
                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                 gameLoop();
             });

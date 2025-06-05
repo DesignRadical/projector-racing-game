@@ -788,7 +788,8 @@
 
         function connectToServer() {
             const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            const serverAddress = `${wsProtocol}//${window.location.hostname}:8080`; 
+            const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+            const serverAddress = `${wsProtocol}//${window.location.hostname}:${currentPort}`; 
             
             if(statusMessage) statusMessage.textContent = `Connecting to ${serverAddress}...`;
             if(joinGameButton) joinGameButton.disabled = true;
