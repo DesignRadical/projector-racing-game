@@ -148,24 +148,43 @@
             height: 34.2vh;
             font-size: 11.4vh; /* 5% smaller: was 12vh, now 11.4vh */
             
-            /* Fix for Apple device button movement */
+            /* Comprehensive fix for Apple device button movement */
             -webkit-appearance: none;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             touch-action: manipulation;
             outline: none;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
         
-        /* Prevent button bouncing on iOS */
+        /* Prevent ALL button visual feedback on touch devices */
         .ctrl-btn:focus,
-        .ctrl-btn:active {
+        .ctrl-btn:active,
+        .ctrl-btn:hover {
             outline: none;
             -webkit-tap-highlight-color: transparent;
+            transform: translateZ(0); /* Override the scale transform for touch devices */
         }
         
-        .ctrl-btn:active {
-            transform: scale(0.9);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+        /* Only allow scale effect on non-touch devices */
+        @media (hover: hover) and (pointer: fine) {
+            .ctrl-btn:active {
+                transform: scale(0.9);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+            }
+        }
+        
+        /* Force no transform on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .ctrl-btn:active,
+            .ctrl-btn:focus,
+            .ctrl-btn:hover {
+                transform: translateZ(0) !important;
+                box-shadow: 0 12px 24px rgba(0,0,0,0.4) !important;
+            }
         }
         
         /* Steering buttons - positioned on left side with exactly 5px spacing */
@@ -360,11 +379,15 @@
             -webkit-tap-highlight-color: transparent; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             
-            /* Fix for Apple device button movement */
+            /* Comprehensive fix for Apple device button movement */
             -webkit-appearance: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
             outline: none;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         }
         .ctrl-btn.portrait-mode.steer, .ctrl-btn.portrait-mode.throttle { 
             background-color: #22c55e; 
@@ -378,16 +401,31 @@
         .ctrl-btn.portrait-mode.reverse:hover { 
             background-color: #d97706; 
         }
-        .ctrl-btn.portrait-mode:active { 
-            transform: scale(0.95); 
+        
+        /* Only allow scale effect on non-touch devices for portrait mode */
+        @media (hover: hover) and (pointer: fine) {
+            .ctrl-btn.portrait-mode:active { 
+                transform: scale(0.95); 
+            }
         }
+        
+        /* Force no transform on touch devices for portrait mode */
+        @media (hover: none) and (pointer: coarse) {
+            .ctrl-btn.portrait-mode:active,
+            .ctrl-btn.portrait-mode:focus,
+            .ctrl-btn.portrait-mode:hover {
+                transform: translateZ(0) !important;
+            }
+        }
+        
         .ctrl-btn.portrait-mode.active { 
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); 
         }
         
-        /* Prevent button bouncing on iOS for portrait mode */
+        /* Prevent ALL button visual feedback on touch devices for portrait mode */
         .ctrl-btn.portrait-mode:focus,
-        .ctrl-btn.portrait-mode:active {
+        .ctrl-btn.portrait-mode:active,
+        .ctrl-btn.portrait-mode:hover {
             outline: none;
             -webkit-tap-highlight-color: transparent;
         }
