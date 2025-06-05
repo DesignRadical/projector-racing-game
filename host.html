@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Racer Host - Larger Cars</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; background-color: #1a202c; color: #e2e8f0; margin: 0; padding: 10px; box-sizing: border-box; }
+        .game-wrapper { 
+            display: flex; flex-direction: column; align-items: center; 
+            gap: 10px; width: 95vw; max-width: 1900px; 
+            margin-left: auto; margin-right: auto; 
+            position: relative; 
+        }
+        #setupScreen { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 350px; padding: 25px; background-color: #2d3748; border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+        #startGameButton { background-color: #38a169; color: white; font-weight: bold; padding: 12px 25px; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.2s; margin-top: 20px; font-size: 1.1em; width: 100%; }
+        
+        #gameScreen { 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 10px; 
+            width: 100%; 
+        }
+        
+        .game-area-container { 
+            width: 100%; 
+            display: flex; 
+            justify-content: center;
+            position: relative; 
+        }
+        #gameCanvas { 
+            border: 2px solid #4a5568; 
+            background-color: #334155; 
+            border-radius: 12px; 
+            width: 100%; 
+            max-width: 100%; 
+            aspect-ratio: 16/9; 
+            image-rendering: pixelated; 
+            image-rendering: crisp-edges; 
+            display: block; 
+        }
+
+        #mainTitle { 
+            position: absolute; 
+            bottom: 15px; 
+            left: 15px;   
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            color: rgba(226, 232, 240, 0.85); 
+            z-index: 30; 
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            margin: 0; 
+            display: none; 
+        }
+
+        .connection-info-container { 
+            position: absolute;
+            bottom: 10px; 
+            right: 10px;  
+            width: auto; 
+            max-width: 180px; 
+            padding: 8px; 
+            background-color: rgba(30, 41, 59, 0.9); 
+            border-radius: 6px; 
+            font-size: 0.75em; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 5px;
+            z-index: 20; 
+            border: 1px solid #4b5563; 
+        }
+        #connectionStatusText { font-size: 0.9em; color: #cbd5e1; } 
+        #qrCodeContainer { 
+            padding: 4px; 
+            background-color: white; 
+            width: 168px; 
+            height: 168px; 
+            border-radius: 6px; 
+            display: none; 
+            box-shadow: 0 0 8px rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        #qrCodeCanvas { 
+            display: block; 
+        }
+        #connectionUrl { font-size: 0.7em; word-break: break-all; color: #94a3b8; margin-top: 3px; }
+        
+        #leaderboard { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: 45%; max-width: 400px; max-height: 260px; 
+            background-color: rgba(30, 41, 59, 0.85); border-radius: 8px; 
+            padding: 8px 12px; color: #e2e8f0; font-size: 0.75em; 
+            border: 1px solid #4a5568; overflow-y: auto; z-index: 10; display: none; 
+        }
+        #leaderboard h3 { margin: 0 0 5px 0; padding-bottom: 3px; border-bottom: 1px solid #4a5568; font-size: 1em; font-weight: bold; text-align: center; }
+        .leaderboard-entry { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed #374151; }
+        .leaderboard-entry:last-child { border-bottom: none; }
+        .leaderboard-name { flex-basis: 35%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500;}
+        .leaderboard-lap { flex-basis: 15%; text-align: center; }
+        .leaderboard-lastlap, .leaderboard-bestlap { flex-basis: 25%; text-align: right; }
+        .leaderboard-header .leaderboard-name, .leaderboard-header .leaderboard-lap, .leaderboard-header .leaderboard-lastlap, .leaderboard-header .leaderboard-bestlap { font-weight: bold; color: #a0aec0; font-size: 0.9em;}
+        
+        .message-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #e53e3e; color: white; padding: 12px 25px; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.25); z-index: 1000; display: none; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div id="messageBox" class="message-box"></div>
+    <div class="game-wrapper">
+        <h1 id="setupScreenTitle" class="text-4xl font-bold mb-6 text-center">Host Setup</h1> 
+        
+        <div id="setupScreen"> 
+            <div class="player-setup"> <p class="text-sm text-gray-400 mb-2">Host display. Players join via phones.</p> </div>
+            <button id="startGameButton">Start Game Display & Connect</button>
+        </div>
+
+        <div id="gameScreen"> 
+            <div class="game-area-container"> 
+                <canvas id="gameCanvas"></canvas> 
+                <h1 id="mainTitle">Race In Progress</h1> 
+                <div id="leaderboard">
+                    <h3>Lap Times</h3>
+                    <div id="leaderboardEntries"></div>
+                </div>
+                <div id="connectionInfoContainer" class="connection-info-container"> 
+                    <span id="connectionStatusText">Attempting to connect...</span>
+                    <div id="qrCodeContainer">
+                        <canvas id="qrCodeCanvas"></canvas>
+                    </div>
+                    <div id="connectionUrl"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const setupScreenTitle = document.getElementById('setupScreenTitle'); 
+        const mainTitle = document.getElementById('mainTitle'); 
+        const setupScreen = document.getElementById('setupScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const startGameButton = document.getElementById('startGameButton');
+        const connectionInfoContainer = document.getElementById('connectionInfoContainer');
+        const connectionStatusText = document.getElementById('connectionStatusText');
+        const qrCodeContainer = document.getElementById('qrCodeContainer');
+        const qrCodeCanvasEl = document.getElementById('qrCodeCanvas'); 
+        const connectionUrlDisplay = document.getElementById('connectionUrl');
+        const leaderboard = document.getElementById('leaderboard');
+        const leaderboardDiv = document.getElementById('leaderboardEntries');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+
+        let socket = null;
+        let hostClientId = null;
+        let players = new Map();
+        const DESIGN_WIDTH = 1280; 
+        const DESIGN_HEIGHT = DESIGN_WIDTH * (9 / 16);
+        let trackParams = {
+            roadThickness: 75, 
+            curveRadius: 0, straightLength: 0, trackFullWidth: 0, trackFullHeight: 0,
+            leftCurveCenterX: 0, rightCurveCenterX: 0, topStraightY: 0, bottomStraightY: 0,
+            sFinishLineX: 0, sFinishLineYStart: 0, sFinishLineYEnd: 0
+        };
+        let gameInitialized = false;
+        const carImageFilenames = [ 
+            'cars/Race_car_01.png', 'cars/Race_car_02.png', 'cars/Race_car_03.png', 'cars/Race_car_04.png',
+            'cars/Race_car_05.png', 'cars/Race_car_06.png', 'cars/Race_car_07.png', 'cars/Race_car_08.png'
+        ];
+        const carShadowFilenames = [ 
+            'overlays/Race_car_01_shadow.png', 'overlays/Race_car_02_shadow.png', 'overlays/Race_car_03_shadow.png', 'overlays/Race_car_04_shadow.png',
+            'overlays/Race_car_05_shadow.png', 'overlays/Race_car_06_shadow.png', 'overlays/Race_car_07_shadow.png', 'overlays/Race_car_08_shadow.png'
+        ];
+        const carImages = {}; 
+        const carShadowImages = {}; // NEW: Individual car shadows
+        const trackBackgroundImageFile = 'track_background.png';
+        const trackBackground2ImageFile = 'track_background2.png';
+        let trackBgImage = new Image();
+        let trackBg2Image = new Image();
+        let trackBgImageLoaded = false;
+        let trackBg2ImageLoaded = false;
+        let currentBackgroundIndex = 0; // 0 for first bg, 1 for second bg
+        let backgroundTransitionAlpha = 1.0; // 1.0 = fully showing current bg, 0.0 = fully showing other bg
+        let backgroundCycleStartTime = Date.now();
+        const BACKGROUND_CYCLE_DURATION = 60000; // 60 seconds
+        const BACKGROUND_FADE_DURATION = 2000; // 2 seconds fade
+        let headlightOverlayImageFile = 'overlays/headlight_overlay.png';
+        const reverseLightOverlayImageFile = 'overlays/reverselight_overlay.png';
+        const boostImageFile = 'boost_pad.png';
+        const shadowOverlayImageFile = 'overlays/track_background_shadow.png';
+        let headlightOverlayImg = new Image();
+        let reverseLightOverlayImg = new Image();
+        let boostImg = new Image();
+        let shadowOverlayImg = new Image();
+        let headlightOverlayLoaded = false;
+        let reverseLightOverlayLoaded = false;
+        let boostImageLoaded = false;
+        let shadowOverlayLoaded = false;
+        let totalAssetsToLoad = carImageFilenames.length + carShadowFilenames.length + 1 + 1 + 2 + 1 + 1;
+        let assetsSuccessfullyLoaded = 0;
+        let assetsAttemptedToLoad = 0;
+        let activeBoosts = [];
+
+        // Confetti system for best lap celebrations
+        let confettiParticles = [];
+        let previousBestTimes = new Map(); // Track previous best times to detect improvements
+        
+        // Blinking effect for new best time achievers
+        let blinkingPlayers = new Map(); // playerId -> { startTime, duration }
+        const BLINK_DURATION = 2000; // 2 seconds
+        const BLINK_FREQUENCY = 400; // Blink every 400ms
+        
+        class ConfettiParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 8; // Random horizontal velocity
+                this.vy = (Math.random() - 0.5) * 8 - 2; // Random vertical velocity (slightly upward bias)
+                this.gravity = 0.15;
+                this.life = 1.0;
+                this.decay = 0.02 + Math.random() * 0.02; // Random decay rate
+                this.size = 3 + Math.random() * 4;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                
+                // Random bright colors for celebration
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= this.decay;
+                this.rotation += this.rotationSpeed;
+                return this.life > 0;
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        function preloadAssets(callback) {
+            assetsSuccessfullyLoaded = 0; assetsAttemptedToLoad = 0;
+            trackBgImageLoaded = false; trackBg2ImageLoaded = false; headlightOverlayLoaded = false; reverseLightOverlayLoaded = false; boostImageLoaded = false; shadowOverlayLoaded = false;
+            if (totalAssetsToLoad === 0) { if (callback) callback(true); return; }
+            function assetLoadedCallback(success, assetName) {
+                assetsAttemptedToLoad++;
+                if (success) assetsSuccessfullyLoaded++; else console.error(`Host: Failed to load ${assetName}`);
+                if (assetsAttemptedToLoad === totalAssetsToLoad) {
+                    console.log(`Host: All assets finished. Success: ${assetsSuccessfullyLoaded}/${totalAssetsToLoad}`);
+                    if (callback) callback(assetsSuccessfullyLoaded >= carImageFilenames.length + 1 + 1); // At least cars + both backgrounds
+                }
+            }
+            carImageFilenames.forEach(filename => {
+                const carId = filename.substring(filename.lastIndexOf('/') + 1, filename.lastIndexOf('.'));
+                carImages[carId] = new Image();
+                carImages[carId].onload = () => assetLoadedCallback(true, `car ${filename}`);
+                carImages[carId].onerror = () => assetLoadedCallback(false, `car ${filename}`);
+                carImages[carId].src = `images/${filename}`; 
+            });
+            
+            // Load car shadow images
+            carShadowFilenames.forEach(filename => {
+                const carId = filename.substring(filename.lastIndexOf('/') + 1, filename.lastIndexOf('_shadow.'));
+                carShadowImages[carId] = new Image();
+                carShadowImages[carId].onload = () => assetLoadedCallback(true, `car shadow ${filename}`);
+                carShadowImages[carId].onerror = () => assetLoadedCallback(false, `car shadow ${filename}`);
+                carShadowImages[carId].src = `images/${filename}`; 
+            });
+            trackBgImage = new Image();
+            trackBgImage.onload = () => { trackBgImageLoaded = true; assetLoadedCallback(true, `bg ${trackBackgroundImageFile}`); };
+            trackBgImage.onerror = () => { trackBgImageLoaded = false; assetLoadedCallback(false, `bg ${trackBackgroundImageFile}`); };
+            trackBgImage.src = `images/${trackBackgroundImageFile}`;
+            trackBg2Image = new Image();
+            trackBg2Image.onload = () => { trackBg2ImageLoaded = true; assetLoadedCallback(true, `bg ${trackBackground2ImageFile}`); };
+            trackBg2Image.onerror = () => { trackBg2ImageLoaded = false; assetLoadedCallback(false, `bg ${trackBackground2ImageFile}`); };
+            trackBg2Image.src = `images/${trackBackground2ImageFile}`;
+            headlightOverlayImg = new Image();
+            headlightOverlayImg.onload = () => { headlightOverlayLoaded = true; assetLoadedCallback(true, `overlay ${headlightOverlayImageFile}`); };
+            headlightOverlayImg.onerror = () => { headlightOverlayLoaded = false; assetLoadedCallback(false, `overlay ${headlightOverlayImageFile}`); };
+            headlightOverlayImg.src = `images/${headlightOverlayImageFile}`;
+            reverseLightOverlayImg = new Image();
+            reverseLightOverlayImg.onload = () => { reverseLightOverlayLoaded = true; assetLoadedCallback(true, `overlay ${reverseLightOverlayImageFile}`); };
+            reverseLightOverlayImg.onerror = () => { reverseLightOverlayLoaded = false; assetLoadedCallback(false, `overlay ${reverseLightOverlayImageFile}`); };
+            reverseLightOverlayImg.src = `images/${reverseLightOverlayImageFile}`;
+            boostImg = new Image();
+            boostImg.onload = () => { boostImageLoaded = true; assetLoadedCallback(true, `overlay ${boostImageFile}`); };
+            boostImg.onerror = () => { boostImageLoaded = false; assetLoadedCallback(false, `overlay ${boostImageFile}`); };
+            boostImg.src = `images/${boostImageFile}`;
+            shadowOverlayImg = new Image();
+            shadowOverlayImg.onload = () => { shadowOverlayLoaded = true; assetLoadedCallback(true, `overlay ${shadowOverlayImageFile}`); };
+            shadowOverlayImg.onerror = () => { shadowOverlayLoaded = false; assetLoadedCallback(false, `overlay ${shadowOverlayImageFile}`); };
+            shadowOverlayImg.src = `images/${shadowOverlayImageFile}`;
+        }
+        
+        function normalizeAngle(angle) { 
+            while (angle > Math.PI) angle -= 2 * Math.PI; while (angle < -Math.PI) angle += 2 * Math.PI; return angle;
+        }
+
+        function triggerConfettiCelebration() {
+            if (!canvas || !gameInitialized) return;
+            
+            // Get leaderboard position (center of screen by default)
+            const leaderboardRect = canvas.getBoundingClientRect();
+            const canvasScale = canvas.width / leaderboardRect.width;
+            const centerX = DESIGN_WIDTH / 2;
+            const centerY = DESIGN_HEIGHT / 2;
+            
+            // Create confetti burst around leaderboard area
+            for (let i = 0; i < 30; i++) {
+                const spreadX = (Math.random() - 0.5) * 200; // Spread around leaderboard
+                const spreadY = (Math.random() - 0.5) * 150;
+                confettiParticles.push(new ConfettiParticle(
+                    centerX + spreadX,
+                    centerY + spreadY
+                ));
+            }
+        }
+
+        function checkForNewBestTimes() {
+            let newBestAchieved = false;
+            const currentTime = Date.now();
+            
+            players.forEach((player, playerId) => {
+                if (player.bestLapTime > 0) {
+                    const previousBest = previousBestTimes.get(playerId);
+                    
+                    // Check if this is a new best time (first time or better than previous)
+                    if (!previousBest || player.bestLapTime < previousBest) {
+                        previousBestTimes.set(playerId, player.bestLapTime);
+                        newBestAchieved = true;
+                        
+                        // Add player to blinking list
+                        blinkingPlayers.set(playerId, {
+                            startTime: currentTime,
+                            duration: BLINK_DURATION
+                        });
+                        
+                        console.log(`New best time for ${player.name}: ${formatTime(player.bestLapTime)}`);
+                    }
+                }
+            });
+            
+            if (newBestAchieved) {
+                triggerConfettiCelebration();
+            }
+        }
+
+        function interpolateAngle(currentAngle, targetAngle, factor) {
+            // Normalize angles to prevent issues with wrapping
+            currentAngle = normalizeAngle(currentAngle);
+            targetAngle = normalizeAngle(targetAngle);
+            
+            // Calculate the difference, handling angle wrapping
+            let angleDiff = normalizeAngle(targetAngle - currentAngle);
+            
+            // Interpolate towards target
+            return normalizeAngle(currentAngle + angleDiff * factor);
+        }
+
+        function updateTrackParameters() { 
+            const designWidth = DESIGN_WIDTH; const designHeight = DESIGN_HEIGHT;
+            const roadThickness = trackParams.roadThickness; 
+            const roadHalfWidth = roadThickness / 2;
+            trackParams.curveRadius = designHeight * 0.30;
+            if (trackParams.curveRadius < roadHalfWidth + 15) trackParams.curveRadius = roadHalfWidth + 15;
+            const minStraightLength = designWidth * 0.2;
+            trackParams.straightLength = Math.max(minStraightLength, designWidth - (2 * trackParams.curveRadius) - (2 * roadHalfWidth) - (designWidth * 0.05));
+            trackParams.trackFullWidth = trackParams.straightLength + 2 * trackParams.curveRadius;
+            const offsetX = (designWidth - trackParams.trackFullWidth) / 2;
+            trackParams.leftCurveCenterX = offsetX + trackParams.curveRadius;
+            trackParams.rightCurveCenterX = offsetX + trackParams.curveRadius + trackParams.straightLength;
+            trackParams.topStraightY = designHeight / 2 - trackParams.curveRadius; 
+            trackParams.bottomStraightY = designHeight / 2 + trackParams.curveRadius;
+            trackParams.sFinishLineX = trackParams.leftCurveCenterX + trackParams.straightLength / 4;
+            trackParams.sFinishLineYStart = trackParams.bottomStraightY - roadHalfWidth;
+            trackParams.sFinishLineYEnd = trackParams.bottomStraightY + roadHalfWidth + 20;
+        }
+
+        function resizeCanvas() {
+            if (!gameInitialized || !canvas) { return; }
+            const parentElement = canvas.parentElement; if (!parentElement) { return; }
+            const parentWidth = parentElement.clientWidth; const targetWidth = parentWidth; 
+            canvas.style.width = `${targetWidth}px`; canvas.style.height = `${targetWidth * (9/16)}px`;
+            
+            // High-DPI support for crisp projector display
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = DESIGN_WIDTH * dpr; 
+            canvas.height = DESIGN_HEIGHT * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Improve image quality
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            drawGame(); 
+        }
+        
+        function updateGame() { 
+            if (!gameInitialized) return; 
+            
+            // Declare currentTime once at the top to avoid redeclaration errors
+            const currentTime = Date.now();
+            
+            // Background cycling logic
+            const timeSinceCycleStart = currentTime - backgroundCycleStartTime;
+            
+            // Calculate when to start fading and when to complete the cycle
+            const fadeStartTime = BACKGROUND_CYCLE_DURATION - BACKGROUND_FADE_DURATION;
+            const cycleCompleteTime = BACKGROUND_CYCLE_DURATION;
+            
+            if (timeSinceCycleStart >= cycleCompleteTime) {
+                // Cycle is complete - switch backgrounds and restart
+                currentBackgroundIndex = (currentBackgroundIndex + 1) % 2;
+                backgroundCycleStartTime = currentTime;
+                backgroundTransitionAlpha = 1.0; // Start fresh cycle at full opacity
+                console.log(`Switched to background ${currentBackgroundIndex + 1}`);
+            } else if (timeSinceCycleStart >= fadeStartTime) {
+                // We're in the fade period
+                const fadeProgress = (timeSinceCycleStart - fadeStartTime) / BACKGROUND_FADE_DURATION;
+                backgroundTransitionAlpha = Math.max(0, 1 - fadeProgress);
+            } else {
+                // Normal period - show current background fully
+                backgroundTransitionAlpha = 1.0;
+            }
+            
+            // Enhanced smooth interpolation for all players (angle + position)
+            players.forEach(player => {
+                // Initialize smooth values if not exists
+                if (typeof player.smoothAngle === 'undefined') {
+                    player.smoothAngle = player.angle;
+                }
+                if (typeof player.smoothX === 'undefined') {
+                    player.smoothX = player.x;
+                }
+                if (typeof player.smoothY === 'undefined') {
+                    player.smoothY = player.y;
+                }
+                
+                // Smoothly interpolate to server values (0.25 = more responsive smoothing)
+                const smoothingFactor = 0.25;
+                player.smoothAngle = interpolateAngle(player.smoothAngle, player.angle, smoothingFactor);
+                
+                // Smooth position interpolation
+                player.smoothX += (player.x - player.smoothX) * smoothingFactor;
+                player.smoothY += (player.y - player.smoothY) * smoothingFactor;
+            });
+            
+            // Update confetti particles
+            confettiParticles = confettiParticles.filter(particle => particle.update());
+            
+            // Update blinking effects - remove expired ones (reusing currentTime)
+            for (const [playerId, blinkData] of blinkingPlayers.entries()) {
+                if (currentTime - blinkData.startTime >= blinkData.duration) {
+                    blinkingPlayers.delete(playerId);
+                }
+            }
+            
+            // Check for new best lap times
+            checkForNewBestTimes();
+        }
+
+        function drawTrack() {
+            if (!ctx || !canvas || trackParams.curveRadius <= 0 || trackParams.straightLength <= 0) return;
+            const roadColor = '#718096'; const borderColor = '#5a687a'; 
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(trackParams.leftCurveCenterX, trackParams.topStraightY);
+            ctx.lineTo(trackParams.rightCurveCenterX, trackParams.topStraightY);
+            ctx.arc(trackParams.rightCurveCenterX, DESIGN_HEIGHT / 2, trackParams.curveRadius, -Math.PI / 2, Math.PI / 2, false);
+            ctx.lineTo(trackParams.leftCurveCenterX, trackParams.bottomStraightY);
+            ctx.arc(trackParams.leftCurveCenterX, DESIGN_HEIGHT / 2, trackParams.curveRadius, Math.PI / 2, -Math.PI / 2, false);
+            ctx.closePath(); 
+            ctx.lineWidth = trackParams.roadThickness + 10; ctx.strokeStyle = 'transparent'; ctx.stroke();
+            ctx.lineWidth = trackParams.roadThickness; ctx.strokeStyle = 'transparent'; ctx.stroke();
+            ctx.beginPath(); 
+            ctx.moveTo(trackParams.leftCurveCenterX, trackParams.topStraightY);
+            ctx.lineTo(trackParams.rightCurveCenterX, trackParams.topStraightY);
+            ctx.arc(trackParams.rightCurveCenterX, DESIGN_HEIGHT / 2, trackParams.curveRadius, -Math.PI / 2, Math.PI / 2, false);
+            ctx.lineTo(trackParams.leftCurveCenterX, trackParams.bottomStraightY);
+            ctx.arc(trackParams.leftCurveCenterX, DESIGN_HEIGHT / 2, trackParams.curveRadius, Math.PI / 2, -Math.PI / 2, false);
+            ctx.closePath();
+            ctx.strokeStyle = 'transparent'; ctx.lineWidth = 2; ctx.setLineDash([20, 15]); ctx.stroke(); ctx.setLineDash([]); 
+            ctx.beginPath();
+            ctx.moveTo(trackParams.sFinishLineX, trackParams.sFinishLineYStart);
+            ctx.lineTo(trackParams.sFinishLineX, trackParams.sFinishLineYEnd);
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 7; 
+            const barHeight = (trackParams.sFinishLineYEnd - trackParams.sFinishLineYStart) / 6;
+            for (let i = 0; i < 6; i++) {
+                ctx.fillStyle = (i % 2 === 0) ? 'white' : 'black';
+                ctx.fillRect(trackParams.sFinishLineX - ctx.lineWidth / 2, trackParams.sFinishLineYStart + i * barHeight, ctx.lineWidth, barHeight);
+            }
+            ctx.restore();
+        }
+
+        function drawBoost(boostData) {
+            if (!ctx || !canvas || !boostData) return;
+            ctx.save();
+            ctx.translate(boostData.x, boostData.y);
+            
+            // Pulsing glow effect
+            const time = Date.now() * 0.005;
+            const pulseScale = 1 + Math.sin(time) * 0.2;
+            ctx.scale(pulseScale, pulseScale);
+            
+            // Draw glow
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 20;
+            
+            if (boostImageLoaded && boostImg.complete && boostImg.naturalHeight !== 0) {
+                ctx.drawImage(boostImg, -16, -16, 32, 32);
+            } else {
+                // Fallback: glowing circle
+                ctx.fillStyle = '#00ff88';
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawCarShadow(carData) {
+            if (!ctx || !canvas || !carData || typeof carData.x !== 'number' || typeof carData.y !== 'number') return;
+            
+            const carShadowToDraw = carShadowImages[carData.carId]; 
+            if (!carShadowToDraw || !carShadowToDraw.complete || carShadowToDraw.naturalHeight === 0) return;
+            
+            ctx.save();
+            
+            // Car dimensions (same as main car)
+            const carDrawWidth = carData.width || 18; 
+            const carDrawHeight = carData.height || 32;
+            const carScaleFactor = 1.625;
+            
+            // 3px offset for shadow positioning
+            const shadowOffsetX = 3;
+            const shadowOffsetY = 3;
+            
+            // Use smooth angle and position for visual display, fallback to server values if not available
+            const displayAngle = typeof carData.smoothAngle !== 'undefined' ? carData.smoothAngle : carData.angle;
+            const displayX = typeof carData.smoothX !== 'undefined' ? carData.smoothX : carData.x;
+            const displayY = typeof carData.smoothY !== 'undefined' ? carData.smoothY : carData.y;
+            
+            // Calculate rear axle position (same as main car)
+            const rearAxleOffset = carDrawHeight * carScaleFactor * 0.2;
+            const frontWheelOffsetX = Math.cos(displayAngle - Math.PI/2) * rearAxleOffset;
+            const frontWheelOffsetY = Math.sin(displayAngle - Math.PI/2) * rearAxleOffset;
+            
+            // Translate to shadow position (offset from smooth car position)
+            ctx.translate(displayX + frontWheelOffsetX + shadowOffsetX, displayY + frontWheelOffsetY + shadowOffsetY); 
+            ctx.rotate(displayAngle);
+            
+            const imageAspectRatio = carShadowToDraw.naturalWidth / carShadowToDraw.naturalHeight;
+            const scaledHeight = carDrawHeight * carScaleFactor; 
+            const scaledWidth = scaledHeight * imageAspectRatio;
+            
+            // Draw shadow (adjusted for rear-axle rotation)
+            ctx.drawImage(carShadowToDraw, -scaledWidth / 2, -scaledHeight + rearAxleOffset, scaledWidth, scaledHeight);
+            
+            ctx.restore();
+        }
+
+        function drawCar(carData) {
+            if (!ctx || !canvas) return;
+            if (!carData || typeof carData.x !== 'number' || typeof carData.y !== 'number') return;
+            const carImageToDraw = carImages[carData.carId]; 
+            ctx.save();
+            
+            // Car dimensions
+            const carDrawWidth = carData.width || 18; 
+            const carDrawHeight = carData.height || 32;
+            const carScaleFactor = 1.625;
+            let scaledWidth = carDrawWidth * carScaleFactor; 
+            let scaledHeight = carDrawHeight * carScaleFactor;
+            
+            // Use smooth angle and position for visual display, fallback to server values if not available
+            const displayAngle = typeof carData.smoothAngle !== 'undefined' ? carData.smoothAngle : carData.angle;
+            const displayX = typeof carData.smoothX !== 'undefined' ? carData.smoothX : carData.x;
+            const displayY = typeof carData.smoothY !== 'undefined' ? carData.smoothY : carData.y;
+            
+            // Calculate rear axle position for realistic turning
+            // Move rotation point towards rear of car (about 70% back from front)
+            const rearAxleOffset = scaledHeight * 0.2; // 20% from rear edge
+            const frontWheelOffsetX = Math.cos(displayAngle - Math.PI/2) * rearAxleOffset;
+            const frontWheelOffsetY = Math.sin(displayAngle - Math.PI/2) * rearAxleOffset;
+            
+            // Translate to rear axle position instead of center (using smooth position)
+            ctx.translate(displayX + frontWheelOffsetX, displayY + frontWheelOffsetY); 
+            ctx.rotate(displayAngle);
+            
+            // Boost glow effect
+            if (carData.hasBoost) {
+                ctx.shadowColor = '#00ff88'; // Changed from '#ffaa00' to match boost pad green
+                ctx.shadowBlur = 15;
+            }
+            
+            if (carImageToDraw && carImageToDraw.complete && carImageToDraw.naturalHeight !== 0) {
+                const imageAspectRatio = carImageToDraw.naturalWidth / carImageToDraw.naturalHeight;
+                scaledHeight = carDrawHeight * carScaleFactor; 
+                scaledWidth = scaledHeight * imageAspectRatio;
+                
+                // Draw actual car (adjusted for rear-axle rotation)
+                ctx.drawImage(carImageToDraw, -scaledWidth / 2, -scaledHeight + rearAxleOffset, scaledWidth, scaledHeight);
+            } else {
+                // Fallback rectangle (adjusted for rear-axle rotation)
+                ctx.fillStyle = '#FF00FF'; 
+                ctx.fillRect(-scaledWidth / 2, -scaledHeight + rearAxleOffset, scaledWidth, scaledHeight);
+            }
+            
+            // Draw player name
+            ctx.font = 'bold 16px Arial'; ctx.fillStyle = '#f0f0f0'; ctx.textAlign = 'center';
+            ctx.fillText(carData.name || 'Player', 0, -scaledHeight + rearAxleOffset - 8); 
+            ctx.restore();
+        }
+
+        function formatTime(ms) {
+            if (ms === 0 || typeof ms !== 'number') return '--:--.---';
+            const totalSeconds = Math.floor(ms / 1000); const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60; const milliseconds = ms % 1000;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+        }
+
+        function updateLeaderboardDisplay() {
+            if (!leaderboardDiv) return;
+            const currentTime = Date.now();
+            let html = `<div class="leaderboard-entry leaderboard-header"><span class="leaderboard-name">Name</span><span class="leaderboard-lap">Lap</span><span class="leaderboard-lastlap">Last</span><span class="leaderboard-bestlap">Best</span></div>`;
+            const sorted = Array.from(players.values()).sort((a,b) => (a.bestLapTime > 0 && b.bestLapTime === 0) ? -1 : ((a.bestLapTime === 0 && b.bestLapTime > 0) ? 1 : (a.bestLapTime && b.bestLapTime ? a.bestLapTime-b.bestLapTime : b.lapCount-a.lapCount)));
+            sorted.forEach(p => {
+                const blinkData = blinkingPlayers.get(p.id);
+                let nameStyle = 'text-shadow: 0 0 2px black;';
+                
+                if (blinkData) {
+                    // Calculate blink state based on time elapsed and frequency
+                    const timeElapsed = currentTime - blinkData.startTime;
+                    const blinkCycle = Math.floor(timeElapsed / BLINK_FREQUENCY) % 2;
+                    
+                    if (blinkCycle === 0) {
+                        // Show yellow when blinking "on"
+                        nameStyle = 'text-shadow: 0 0 2px black; color: #ffdd00; font-weight: bold;';
+                    } else {
+                        // Show normal white when blinking "off"
+                        nameStyle = 'text-shadow: 0 0 2px black; color: #f0f0f0;';
+                    }
+                }
+                
+                html += `<div class="leaderboard-entry"><span class="leaderboard-name" style="${nameStyle}">${p.name||'P'}</span><span class="leaderboard-lap">${p.lapCount||0}</span><span class="leaderboard-lastlap">${formatTime(p.lastLapTime)}</span><span class="leaderboard-bestlap">${formatTime(p.bestLapTime)}</span></div>`;
+            });
+            leaderboardDiv.innerHTML = html;
+        }
+
+        function drawGame() { 
+            if (!gameInitialized || !ctx || !canvas) return;
+            ctx.clearRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT); 
+            
+            // Draw background with cycling transition
+            if (currentBackgroundIndex === 0) {
+                // Currently showing background 1, potentially fading to background 2
+                if (trackBg2ImageLoaded && trackBg2Image.complete && trackBg2Image.naturalHeight !== 0) {
+                    ctx.globalAlpha = 1 - backgroundTransitionAlpha;
+                    ctx.drawImage(trackBg2Image, 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+                }
+                if (trackBgImageLoaded && trackBgImage.complete && trackBgImage.naturalHeight !== 0) {
+                    ctx.globalAlpha = backgroundTransitionAlpha;
+                    ctx.drawImage(trackBgImage, 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+                }
+            } else {
+                // Currently showing background 2, potentially fading to background 1
+                if (trackBgImageLoaded && trackBgImage.complete && trackBgImage.naturalHeight !== 0) {
+                    ctx.globalAlpha = 1 - backgroundTransitionAlpha;
+                    ctx.drawImage(trackBgImage, 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+                }
+                if (trackBg2ImageLoaded && trackBg2Image.complete && trackBg2Image.naturalHeight !== 0) {
+                    ctx.globalAlpha = backgroundTransitionAlpha;
+                    ctx.drawImage(trackBg2Image, 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+                }
+            }
+            ctx.globalAlpha = 1.0; // Reset alpha for other elements
+            
+            drawTrack(); // TRACK VISUAL BACK ON: Now you can see how collision boundaries relate to visual track
+            
+            // Draw individual car shadows first (under cars)
+            players.forEach(playerData => { drawCarShadow(playerData); });
+            
+            // Draw cars (above shadows, below background shadow)
+            players.forEach(playerData => { drawCar(playerData); });
+            
+            // Draw background shadow only when track_background2 is active/visible
+            if (shadowOverlayLoaded && shadowOverlayImg.complete && shadowOverlayImg.naturalHeight !== 0) {
+                let shadowOpacity = 0;
+                
+                if (currentBackgroundIndex === 0) {
+                    // Currently showing background 1, shadow appears as we fade to background 2
+                    shadowOpacity = 1 - backgroundTransitionAlpha;
+                } else {
+                    // Currently showing background 2, shadow visible as background 2 is visible
+                    shadowOpacity = backgroundTransitionAlpha;
+                }
+                
+                if (shadowOpacity > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = shadowOpacity;
+                    ctx.globalCompositeOperation = 'multiply'; // Use multiply blend mode for realistic shadows
+                    ctx.drawImage(shadowOverlayImg, 0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+                    ctx.globalCompositeOperation = 'source-over'; // Reset to normal blending
+                    ctx.restore();
+                }
+            }
+            
+            // Draw boosts AFTER background shadow so they glow better
+            activeBoosts.forEach(boostData => { drawBoost(boostData); });
+            
+            // Draw headlights and reverse lights LAST (above everything including background shadows)
+            players.forEach(playerData => { 
+                if (!playerData || typeof playerData.x !== 'number' || typeof playerData.y !== 'number') return;
+                ctx.save();
+                
+                // Car dimensions
+                const carDrawWidth = playerData.width || 18; 
+                const carDrawHeight = playerData.height || 32;
+                const carScaleFactor = 1.625;
+                let scaledWidth = carDrawWidth * carScaleFactor; 
+                let scaledHeight = carDrawHeight * carScaleFactor;
+                
+                // Use smooth angle and position for visual display
+                const displayAngle = typeof playerData.smoothAngle !== 'undefined' ? playerData.smoothAngle : playerData.angle;
+                const displayX = typeof playerData.smoothX !== 'undefined' ? playerData.smoothX : playerData.x;
+                const displayY = typeof playerData.smoothY !== 'undefined' ? playerData.smoothY : playerData.y;
+                
+                // Calculate rear axle position for realistic turning
+                const rearAxleOffset = scaledHeight * 0.2;
+                const frontWheelOffsetX = Math.cos(displayAngle - Math.PI/2) * rearAxleOffset;
+                const frontWheelOffsetY = Math.sin(displayAngle - Math.PI/2) * rearAxleOffset;
+                
+                // Translate to rear axle position (using smooth position)
+                ctx.translate(displayX + frontWheelOffsetX, displayY + frontWheelOffsetY); 
+                ctx.rotate(displayAngle);
+                
+                // Draw headlights overlay
+                if (playerData.showHeadlights && headlightOverlayLoaded && headlightOverlayImg.complete && headlightOverlayImg.naturalHeight !== 0) {
+                    const overlayAspectRatio = headlightOverlayImg.naturalWidth / headlightOverlayImg.naturalHeight;
+                    const overlayScaledHeight = carDrawHeight * carScaleFactor; 
+                    const overlayScaledWidth = overlayScaledHeight * overlayAspectRatio;
+                    ctx.drawImage(headlightOverlayImg, -overlayScaledWidth / 2, -overlayScaledHeight + rearAxleOffset, overlayScaledWidth, overlayScaledHeight);
+                }
+                
+                // Draw reverse lights overlay
+                if (playerData.showReverseLights && reverseLightOverlayLoaded && reverseLightOverlayImg.complete && reverseLightOverlayImg.naturalHeight !== 0) {
+                    const overlayAspectRatio = reverseLightOverlayImg.naturalWidth / reverseLightOverlayImg.naturalHeight;
+                    const overlayScaledHeight = carDrawHeight * carScaleFactor;
+                    const overlayScaledWidth = overlayScaledHeight * overlayAspectRatio;
+                    ctx.drawImage(reverseLightOverlayImg, -overlayScaledWidth / 2, -overlayScaledHeight + rearAxleOffset, overlayScaledWidth, overlayScaledHeight);
+                }
+                
+                ctx.restore();
+            });
+            
+            updateLeaderboardDisplay(); 
+            
+            // Draw confetti particles on top of everything
+            confettiParticles.forEach(particle => particle.draw(ctx));
+        }
+
+        let animationFrameId = null;
+        function gameLoop() { updateGame(); drawGame(); animationFrameId = requestAnimationFrame(gameLoop); }
+        
+        function connectToServer() {
+            console.log("Host: connectToServer called.");
+            const serverAddress = 'ws://localhost:8080';
+            if(connectionStatusText) connectionStatusText.textContent = `Attempting to connect...`;
+            if(qrCodeContainer) qrCodeContainer.style.display = 'none';
+            if(connectionUrlDisplay) connectionUrlDisplay.textContent = '';
+
+            socket = new WebSocket(serverAddress);
+            socket.onopen = () => {
+                console.log('Host: WebSocket onopen event fired.'); 
+                if(connectionStatusText) connectionStatusText.textContent = `Host Connected! Requesting server info...`;
+                showMessage('Host display connected to server!', 3000, 'success');
+                socket.send(JSON.stringify({ type: 'hostAnnounce' }));
+            };
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'welcome') { hostClientId = message.clientId; } 
+                    else if (message.type === 'serverInfo') { 
+                        if (message.ipAddresses && message.ipAddresses.length > 0 && message.port) {
+                            // Smart IP selection: prefer local network, then public, then localhost
+                            let preferredIp;
+                            
+                            // 1st priority: Local network IPs (192.168, 10.x, 172.16-31)
+                            preferredIp = message.ipAddresses.find(ip => 
+                                ip.startsWith("192.168.") || 
+                                ip.startsWith("10.") || 
+                                /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)
+                            );
+                            
+                            // 2nd priority: Any external IP (not localhost)
+                            if (!preferredIp) {
+                                preferredIp = message.ipAddresses.find(ip => 
+                                    ip !== 'localhost' && ip !== '127.0.0.1'
+                                );
+                            }
+                            
+                            // 3rd priority: localhost/127.0.0.1
+                            if (!preferredIp) {
+                                preferredIp = message.ipAddresses.find(ip => 
+                                    ip === 'localhost' || ip === '127.0.0.1'
+                                ) || message.ipAddresses[0];
+                            }
+                            
+                            // Final fallback
+                            if (!preferredIp) {
+                                preferredIp = message.ipAddresses[0];
+                            }
+                            
+                            const controllerUrl = `http://${preferredIp}:${message.port}/controller.html`;
+                            if(connectionStatusText) connectionStatusText.textContent = 'Scan QR to Join:';
+                            if(connectionUrlDisplay) connectionUrlDisplay.textContent = `Or type: ${controllerUrl}`; 
+                            const currentQrCanvasEl = document.getElementById('qrCodeCanvas'); 
+                            if(qrCodeContainer && currentQrCanvasEl) {
+                                try {
+                                    const qrCtx = currentQrCanvasEl.getContext('2d');
+                                    if (qrCtx) qrCtx.clearRect(0, 0, currentQrCanvasEl.width, currentQrCanvasEl.height);
+                                    new QRious({ 
+                                        element: currentQrCanvasEl, 
+                                        value: controllerUrl, 
+                                        size: 160, 
+                                        level: 'M', 
+                                        padding: 2, 
+                                        background: 'white', 
+                                        foreground: 'black' 
+                                    });
+                                    // Ensure the canvas fills the container properly
+                                    currentQrCanvasEl.style.width = '160px';
+                                    currentQrCanvasEl.style.height = '160px';
+                                    currentQrCanvasEl.style.display = 'block';
+                                    currentQrCanvasEl.style.margin = '0 auto';
+                                    qrCodeContainer.style.display = 'flex';
+                                } catch(qrError) { console.error("Host: Error generating QRious code:", qrError); if(connectionUrlDisplay) connectionUrlDisplay.textContent = `QR Error. Use: ${controllerUrl}`; }
+                            } else { console.error("Host: QR canvas or container element not found."); }
+                        } else { if(connectionStatusText) connectionStatusText.textContent = "Connected! No IP for QR."; }
+                    } else if (message.type === 'existingPlayers' || message.type === 'newPlayer' || message.type === 'gameStateUpdate') { 
+                        const pArray = message.type === 'gameStateUpdate' ? message.players : (message.type === 'newPlayer' ? [message.player] : message.players); 
+                        if (pArray && Array.isArray(pArray)) {
+                            pArray.forEach(pD => { if(pD && typeof pD.id !== 'undefined') { pD.carId = pD.carId || 'cars/Race_car_01'; players.set(pD.id, pD);}});
+                        }
+                        
+                        // Handle boost data
+                        if (message.type === 'gameStateUpdate' && message.boosts) {
+                            activeBoosts = message.boosts;
+                        }
+                        
+                        if (message.type === 'newPlayer' && message.player) showMessage(`${message.player.name||'Player'} joined!`, 3000, 'success');
+                    } else if (message.type === 'playerLeft') { 
+                        const lP = players.get(message.clientId); if (lP) { showMessage(`${lP.name||'Player'} left.`, 3000); players.delete(message.clientId);}}
+                } catch (e) { console.error("Host: Error processing server message", e); }
+            };
+            socket.onerror = (error) => { console.error('Host: WebSocket error:', error); if(connectionStatusText) connectionStatusText.textContent = 'Connection error.'; showMessage('WS error.', 5000, 'error');};
+            socket.onclose = () => { console.log('Host: Disconnected.'); if(connectionStatusText) connectionStatusText.textContent = 'Disconnected.'; showMessage('Disconnected.', 5000, 'error'); if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null;};
+        }
+
+        function initializeGameElements() {
+            console.log("Host: initializeGameElements called."); 
+            if (gameInitialized) return; 
+            updateTrackParameters(); 
+            preloadAssets((allAssetsOK) => { 
+                console.log(`Host: Assets preloaded. Overall success: ${allAssetsOK}. Init game.`); 
+                const initialHostTitle = document.getElementById('setupScreenTitle');
+                if(initialHostTitle) initialHostTitle.style.display = 'none'; 
+                if(setupScreen) setupScreen.style.display = 'none'; 
+                if(mainTitle) { mainTitle.textContent = "Race In Progress"; mainTitle.style.display = 'block'; }
+                if(gameScreen) gameScreen.style.display = 'flex';
+                if(leaderboard) leaderboard.style.display = 'block'; 
+                gameInitialized = true; 
+                resizeCanvas(); 
+                connectToServer();
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                gameLoop();
+            });
+        }
+        startGameButton.addEventListener('click', initializeGameElements);
+        function showMessage(message, duration = 3000, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.style.backgroundColor = type === 'error' ? '#c53030' : (type === 'success' ? '#38a169' : '#e53e3e');
+            messageBox.style.display = 'block';
+            setTimeout(() => { messageBox.style.display = 'none'; }, duration);
+        }
+        window.addEventListener('resize', () => { if (gameInitialized) resizeCanvas(); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Racer Controller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            background-color: #111827; 
+            color: #e5e7eb; 
+            padding: 15px; 
+            box-sizing: border-box; 
+            text-align: center; 
+        }
+        .container { 
+            background-color: #1f2937; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3); 
+            width: 100%; 
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px; 
+        }
+        
+        /* Rotation Message for Portrait Mode */
+        .rotation-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .rotation-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .rotation-text {
+            line-height: 1.4;
+            max-width: 280px;
+        }
+        
+        .rotate-icon {
+            font-size: 3rem;
+            animation: rotateIcon 2s infinite ease-in-out;
+        }
+        
+        @keyframes rotateIcon {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+        }
+        
+        /* Dashboard-based Controller Layout */
+        .dashboard-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('images/dashboard.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: none; /* Hidden by default, shown in landscape */
+            z-index: 0;
+        }
+        
+        /* Centered steering wheel */
+        .steering-wheel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 75vh; /* 3x bigger: was 25vh, now 75vh */
+            height: 75vh;
+            background-image: url('images/steering_wheel.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.15s ease-out;
+            z-index: 1; /* Below buttons but above dashboard */
+        }
+        
+        .steering-wheel.turn-left {
+            transform: translate(-50%, -50%) rotate(-30deg);
+        }
+        
+        .steering-wheel.turn-right {
+            transform: translate(-50%, -50%) rotate(30deg);
+        }
+        
+        /* Control buttons positioned over the dashboard */
+        .control-buttons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10; /* Above steering wheel */
+        }
+        
+        .ctrl-btn {
+            position: absolute;
+            pointer-events: all;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            border-radius: 42px; /* Adjusted for smaller size */
+            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+            width: 34.2vh; /* 5% smaller: was 36vh, now 34.2vh */
+            height: 34.2vh;
+            font-size: 11.4vh; /* 5% smaller: was 12vh, now 11.4vh */
+        }
+        
+        .ctrl-btn:active {
+            transform: scale(0.9);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+        }
+        
+        /* Steering buttons - positioned on left side with exactly 5px spacing */
+        .btn-left {
+            left: 2vw; /* Keep on left side */
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #3b82f6;
+        }
+        
+        .btn-left:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-right {
+            left: calc(2vw + 34.2vh + 5px); /* Positioned 5px to the right of left button */
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #3b82f6;
+        }
+        
+        .btn-right:hover {
+            background-color: #2563eb;
+        }
+        
+        /* Drive buttons - positioned with exactly 5px spacing */
+        .btn-forward {
+            right: 5vw;
+            top: calc(50% - 17.1vh - 2.5px); /* Positioned above center with 5px total gap */
+            transform: translateY(-50%);
+            background-color: #22c55e;
+        }
+        
+        .btn-forward:hover {
+            background-color: #16a34a;
+        }
+        
+        .btn-reverse {
+            right: 5vw;
+            top: calc(50% + 17.1vh + 2.5px); /* Positioned below center with 5px total gap */
+            transform: translateY(-50%);
+            background-color: #f59e0b;
+        }
+        
+        .btn-reverse:hover {
+            background-color: #d97706;
+        }
+        
+        /* Speedometer overlay on steering wheel */
+        .speedometer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            border: 6px solid #22c55e; /* Thicker border for larger size */
+            border-radius: 50%;
+            width: 24vh; /* 3x bigger: was 8vh, now 24vh */
+            height: 24vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 6vh; /* 3x bigger: was 2vh, now 6vh */
+            font-weight: bold;
+            color: #22c55e;
+            z-index: 5; /* Above steering wheel but below buttons */
+        }
+        
+        .speedometer .speed-value {
+            font-size: 7.5vh; /* 3x bigger: was 2.5vh, now 7.5vh */
+            line-height: 1;
+        }
+        
+        .speedometer .speed-unit {
+            font-size: 3.6vh; /* 3x bigger: was 1.2vh, now 3.6vh */
+            color: #9ca3af;
+        }
+        
+        /* Player info and disconnect button for landscape */
+        .landscape-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 15; /* Above everything */
+            display: none;
+        }
+        
+        .player-name-landscape {
+            position: absolute;
+            top: 3vh;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 4.5vh; /* 50% larger: was 3vh, now 4.5vh */
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+            pointer-events: none;
+        }
+        
+        .disconnect-btn-landscape {
+            position: absolute;
+            top: 3vh;
+            left: 3vh; /* Moved to top left: was right: 3vh, now left: 3vh */
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 1.5vh 3vh;
+            font-size: 2.5vh;
+            border-radius: 1.5vh;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            pointer-events: all;
+            font-weight: bold;
+        }
+        
+        .disconnect-btn-landscape:hover {
+            background-color: #dc2626;
+        }
+
+        /* Portrait mode styles (existing) */
+        #setupScreen { display: flex; flex-direction: column; align-items: center; gap: 10px; } 
+        #controllerScreen { 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 15px; 
+            width: 100%; 
+        }
+        
+        .player-info { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            background: rgba(255,255,255,0.1); 
+            padding: 8px; 
+            border-radius: 8px; 
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 0.9em;
+        }
+        
+        .controls-main-area { 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: flex-start; 
+            width: 100%; 
+            gap: 20px; 
+        }
+        .control-column { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 8px; 
+            flex-grow: 1; 
+        }
+        .control-label { 
+            font-size: 0.9em; 
+            font-weight: bold; 
+            color: #9ca3af; 
+            text-transform: uppercase; 
+            margin-bottom: 5px; 
+        }
+        .steering-buttons { 
+            display: flex; 
+            gap: 20px; 
+        } 
+        .drive-buttons { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            align-items: center;
+        } 
+        
+        .ctrl-btn.portrait-mode { 
+            color: white; 
+            font-weight: bold; 
+            width: 103.5px;
+            height: 103.5px;
+            border-radius: 13.8px;
+            border: none; 
+            cursor: pointer; 
+            transition: background-color 0.1s, transform 0.05s; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 2.875rem;
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2); 
+        }
+        .ctrl-btn.portrait-mode.steer, .ctrl-btn.portrait-mode.throttle { 
+            background-color: #22c55e; 
+        }
+        .ctrl-btn.portrait-mode.steer:hover, .ctrl-btn.portrait-mode.throttle:hover { 
+            background-color: #16a34a; 
+        }
+        .ctrl-btn.portrait-mode.reverse { 
+            background-color: #f59e0b; 
+        } 
+        .ctrl-btn.portrait-mode.reverse:hover { 
+            background-color: #d97706; 
+        }
+        .ctrl-btn.portrait-mode:active { 
+            transform: scale(0.95); 
+        }
+        .ctrl-btn.portrait-mode.active { 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); 
+        }
+        
+        #disconnectButton { 
+            background-color: #ef4444; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-top: 15px;
+        }
+        #disconnectButton:hover { 
+            background-color: #dc2626; 
+        }
+
+        .name-input-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        input[type="text"]#playerNameInput { 
+            padding: 12px; border-radius: 8px; border: 1px solid #4b5563; 
+            background-color: #374151; color: #e5e7eb; 
+            width: 100%; text-align: center; font-size: 1.1em; font-weight: 500;
+        }
+        .input-requirement-text { font-size: 0.75em; color: #9ca3af; }
+        
+        .car-selector { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 5px 0; width: 100%;}
+        .car-selection-row {
+            display: flex; align-items: center; justify-content: space-between; 
+            width: 100%; max-width: 300px; margin-bottom: 5px;
+        }
+        .car-preview-container { 
+            width: 100px; height: 100px; background-color: #374151; 
+            border: 1px solid #4b5563; border-radius: 8px; 
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
+        }
+        #carPreviewImage { max-width: 90%; max-height: 90%; object-fit: contain; image-rendering: crisp-edges; }
+        
+        .car-nav-button-container {
+            background-color: #374151; border-radius: 8px; padding: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .car-nav-button-container button { 
+            background-color: #4b5563; padding: 8px 10px; font-size: 1.2em; 
+            font-weight: bold; width: 45px; height: 45px;
+            border-radius: 6px; display: flex; justify-content: center; align-items: center;
+            color: white;
+        }
+        .car-nav-button-container button:hover { background-color: #6b7280; }
+        #carNameDisplay { font-size: 1em; color: #d1d5db; margin-top: 0px; min-height: 1.2em; font-weight: 600; } 
+        
+        #carDescriptionDisplay {
+            font-size: 0.75em; color: #9ca3af; margin-top: 4px;
+            min-height: 3.6em; line-height: 1.4; max-width: 280px; 
+        }
+
+        .blinking-text { animation: blinker 1.5s linear infinite; }
+        @keyframes blinker { 50% { color: #f59e0b; text-shadow: 0 0 5px #f59e0b;} }
+
+        #nextCarButton.pulsing-button {
+            animation: pulseIconYellow 1.5s infinite;
+        }
+        @keyframes pulseIconYellow {
+            0%   { color: white; transform: scale(1); }
+            50%  { color: #f59e0b; transform: scale(1.1); text-shadow: 0 0 8px #f59e0b; }
+            100% { color: white; transform: scale(1); }
+        }
+
+        .status-message { margin-top: 10px; font-size: 0.9em; color: #ef4444; min-height: 18px; }
+        button#joinGameButton { background-color: #10b981; margin-top: 10px; font-size: 1.2em; padding: 12px 20px; font-weight: bold; }
+        button#joinGameButton:hover { background-color: #059669; }
+        button:disabled { background-color: #4b5563 !important; color: #9ca3af !important; cursor: not-allowed !important; }
+        #mainTitle { font-size: 1.6rem; font-weight: bold; color: #f3f4f6; margin-bottom: 5px;}
+        #controllerPlayerName { font-size: 1rem; font-weight: 500; color: #9ca3af; margin-bottom: 15px; }
+
+        /* Media queries for orientation */
+        @media screen and (orientation: portrait) {
+            .rotation-message.show-rotation {
+                display: flex !important;
+            }
+            .dashboard-container.show-dashboard,
+            .landscape-ui.show-dashboard {
+                display: none !important;
+            }
+            body {
+                padding: 15px;
+            }
+            .container.show-setup {
+                display: flex;
+            }
+        }
+
+        @media screen and (orientation: landscape) {
+            .rotation-message.show-rotation {
+                display: none !important;
+            }
+            .dashboard-container.show-dashboard,
+            .landscape-ui.show-dashboard {
+                display: block !important;
+            }
+            body.controller-active {
+                padding: 0;
+                background: transparent;
+            }
+            .container.hide-in-landscape {
+                display: none;
+            }
+        }
+
+        /* Default state - always show setup container */
+        .container {
+            display: flex;
+        }
+        .dashboard-container,
+        .landscape-ui,
+        .rotation-message {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Rotation message for portrait mode -->
+    <div class="rotation-message">
+        <div class="rotation-content">
+            <i class="fas fa-mobile-alt rotate-icon"></i>
+            <div class="rotation-text">Please rotate your device to landscape mode for the best racing experience!</div>
+        </div>
+    </div>
+
+    <!-- Dashboard-based controller for landscape mode -->
+    <div class="dashboard-container">
+        <!-- Steering wheel (rotatable, behind buttons) -->
+        <div class="steering-wheel" id="steeringWheel"></div>
+        
+        <!-- Speedometer overlay on steering wheel -->
+        <div class="speedometer">
+            <div class="speed-value" id="speedValue">0</div>
+            <div class="speed-unit">km/h</div>
+        </div>
+        
+        <!-- Control buttons overlay -->
+        <div class="control-buttons">
+            <!-- Steering buttons on left -->
+            <button class="ctrl-btn btn-left" id="leftBtn" data-action="steer_left">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button class="ctrl-btn btn-right" id="rightBtn" data-action="steer_right">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <!-- Drive buttons on right -->
+            <button class="ctrl-btn btn-forward" id="forwardBtn" data-action="accelerate">
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            <button class="ctrl-btn btn-reverse" id="reverseBtn" data-action="reverse">
+                <i class="fas fa-arrow-down"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Landscape UI overlay -->
+    <div class="landscape-ui">
+        <div class="player-name-landscape" id="playerNameLandscape">Player Name</div>
+        <button class="disconnect-btn-landscape" id="disconnectBtnLandscape">DISCONNECT</button>
+    </div>
+
+    <!-- Portrait mode container (existing setup/controller screens) -->
+    <div class="container">
+        <!-- Setup Screen -->
+        <div id="setupScreen">
+            <h1 id="mainTitle">Racer Controller</h1>
+            
+            <div class="name-input-container">
+                <input type="text" id="playerNameInput" placeholder="Enter your player name" maxlength="20" />
+                <div class="input-requirement-text">Name required (2-20 characters)</div>
+            </div>
+            
+            <div class="car-selector">
+                <div class="car-selection-row">
+                    <div class="car-nav-button-container">
+                        <button id="prevCarButton"><i class="fas fa-chevron-left"></i></button>
+                    </div>
+                    <div class="car-preview-container">
+                        <img id="carPreviewImage" src="" alt="Car Preview" />
+                    </div>
+                    <div class="car-nav-button-container">
+                        <button id="nextCarButton"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="carNameDisplay">Loading...</div>
+                <div id="carDescriptionDisplay">Fetching car details...</div>
+            </div>
+            
+            <button id="joinGameButton" disabled>Join Game</button>
+            <div class="status-message" id="statusMessage"></div>
+        </div>
+
+        <!-- Controller Screen -->
+        <div id="controllerScreen">
+            <div class="player-info">
+                <div id="controllerPlayerName">Connected as: Player</div>
+            </div>
+            
+            <div class="controls-main-area">
+                <div class="control-column">
+                    <div class="control-label">Steering</div>
+                    <div class="steering-buttons">
+                        <button class="ctrl-btn portrait-mode steer" id="leftBtnPortrait" data-action="steer_left">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <button class="ctrl-btn portrait-mode steer" id="rightBtnPortrait" data-action="steer_right">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-column">
+                    <div class="control-label">Drive</div>
+                    <div class="drive-buttons">
+                        <button class="ctrl-btn portrait-mode throttle" id="forwardBtnPortrait" data-action="accelerate">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button class="ctrl-btn portrait-mode reverse" id="reverseBtnPortrait" data-action="reverse">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="disconnectButton">Disconnect</button>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let selectedName = '';
+        let myClientId = null;
+        let currentControls = { left: false, right: false, throttle: false, reverse: false };
+        let currentCarIndex = 0;
+
+        // Car assets data
+        const carAssets = [
+            { id: 'Race_car_01', file: 'Race_car_01.png', displayName: 'SEDAN CLASSIC', description: 'A reliable and comfortable choice for new racers. Well-balanced handling with good fuel economy.' },
+            { id: 'Race_car_02', file: 'Race_car_02.png', displayName: 'HATCHBACK SPORT', description: 'Compact yet peppy. Excellent for city racing with nimble cornering and quick acceleration.' },
+            { id: 'Race_car_03', file: 'Race_car_03.png', displayName: 'SUV ENDURANCE', description: 'Built for tough conditions. Higher durability but heavier handling. Perfect for challenging tracks.' },
+            { id: 'Race_car_04', file: 'Race_car_04.png', displayName: 'COUPE PERFORMANCE', description: 'Sleek and fast. Lower fuel consumption but requires skilled handling. For experienced drivers.' }
+        ];
+
+        const profanityList = ['noob', 'idiot', 'stupid', 'dumb', 'loser', 'hate', 'kill', 'die', 'suck', 'crap', 'damn'];
+
+        // Element references - Setup screen
+        const setupScreen = document.getElementById('setupScreen');
+        const controllerScreen = document.getElementById('controllerScreen');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const joinGameButton = document.getElementById('joinGameButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const mainTitle = document.getElementById('mainTitle');
+        const controllerPlayerName = document.getElementById('controllerPlayerName');
+        
+        // Car selection elements
+        const prevCarButton = document.getElementById('prevCarButton');
+        const nextCarButton = document.getElementById('nextCarButton');
+        const carPreviewImage = document.getElementById('carPreviewImage');
+        const carNameDisplay = document.getElementById('carNameDisplay');
+        const carDescriptionDisplay = document.getElementById('carDescriptionDisplay');
+
+        // Portrait mode control buttons
+        const leftBtnPortrait = document.getElementById('leftBtnPortrait');
+        const rightBtnPortrait = document.getElementById('rightBtnPortrait');
+        const forwardBtnPortrait = document.getElementById('forwardBtnPortrait');
+        const reverseBtnPortrait = document.getElementById('reverseBtnPortrait');
+        const disconnectButton = document.getElementById('disconnectButton');
+
+        // Landscape mode elements
+        const steeringWheel = document.getElementById('steeringWheel');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        const forwardBtn = document.getElementById('forwardBtn');
+        const reverseBtn = document.getElementById('reverseBtn');
+        const playerNameLandscape = document.getElementById('playerNameLandscape');
+        const disconnectBtnLandscape = document.getElementById('disconnectBtnLandscape');
+
+        // Speedometer elements
+        const speedValue = document.getElementById('speedValue');
+
+        function showControllerScreen() {
+            if(setupScreen) setupScreen.style.display = 'none';
+            if(controllerScreen) controllerScreen.style.display = 'flex';
+            if(controllerPlayerName) controllerPlayerName.textContent = `Connected as: ${selectedName}`;
+            if(playerNameLandscape) playerNameLandscape.textContent = selectedName;
+            if(mainTitle) mainTitle.textContent = "Controller";
+            
+            setupControllerButtons();
+            
+            // Add state classes for proper flow management
+            document.body.classList.add('controller-active');
+            const container = document.querySelector('.container');
+            const rotationMessage = document.querySelector('.rotation-message');
+            const dashboardContainer = document.querySelector('.dashboard-container');
+            const landscapeUI = document.querySelector('.landscape-ui');
+            
+            if (container) {
+                container.classList.add('show-setup');
+                container.classList.add('hide-in-landscape');
+            }
+            if (rotationMessage) rotationMessage.classList.add('show-rotation');
+            if (dashboardContainer) dashboardContainer.classList.add('show-dashboard');
+            if (landscapeUI) landscapeUI.classList.add('show-dashboard');
+            
+            // Show rotation message if in portrait
+            setTimeout(showRotationMessage, 200);
+        }
+
+        function updateCarPreview() {
+            const selectedCar = carAssets[currentCarIndex];
+            if (carPreviewImage) carPreviewImage.src = `images/cars/${selectedCar.file}`; 
+            if (carNameDisplay) carNameDisplay.textContent = selectedCar.displayName;
+            if (carDescriptionDisplay) carDescriptionDisplay.textContent = selectedCar.description;
+        }
+
+        if(prevCarButton) prevCarButton.addEventListener('click', () => {
+            currentCarIndex = (currentCarIndex - 1 + carAssets.length) % carAssets.length;
+            updateCarPreview();
+        });
+
+        if(nextCarButton) nextCarButton.addEventListener('click', () => {
+            currentCarIndex = (currentCarIndex + 1) % carAssets.length;
+            updateCarPreview();
+        });
+        
+        function validateNameAndControls() {
+            if (!playerNameInput || !joinGameButton || !statusMessage) return;
+            selectedName = playerNameInput.value.trim();
+            let nameIsValid = true;
+            let message = "Ready to join!";
+            statusMessage.style.color = "#9ca3af"; 
+
+            if (selectedName.length === 0) {
+                nameIsValid = false;
+                message = "Please enter a name to join.";
+                statusMessage.style.color = "#ef4444";
+            } else {
+                const lowerCaseName = selectedName.toLowerCase();
+                for (const badWord of profanityList) {
+                    if (lowerCaseName.includes(badWord)) {
+                        nameIsValid = false;
+                        message = "Name contains inappropriate words.";
+                        statusMessage.style.color = "#ef4444"; 
+                        break;
+                    }
+                }
+            }
+            
+            joinGameButton.disabled = !nameIsValid;
+            statusMessage.textContent = message;
+        }
+
+        if(playerNameInput) playerNameInput.addEventListener('input', validateNameAndControls);
+        
+        function sendControls() { 
+            if (socket && socket.readyState === WebSocket.OPEN && myClientId !== null) {
+                const controlMessage = { type: 'controlInput', clientId: myClientId, controls: currentControls };
+                socket.send(JSON.stringify(controlMessage));
+            }
+        }
+
+        function updateSteeringWheel() {
+            if (!steeringWheel) return;
+            
+            steeringWheel.classList.remove('turn-left', 'turn-right');
+            
+            if (currentControls.left && !currentControls.right) {
+                steeringWheel.classList.add('turn-left');
+            } else if (currentControls.right && !currentControls.left) {
+                steeringWheel.classList.add('turn-right');
+            }
+        }
+
+        function setupControllerButtons() { 
+            const buttonMappings = [
+                // Portrait mode controls
+                { el: leftBtnPortrait, key: 'left' }, 
+                { el: rightBtnPortrait, key: 'right' },
+                { el: forwardBtnPortrait, key: 'throttle' }, 
+                { el: reverseBtnPortrait, key: 'reverse' },
+                // Landscape mode controls
+                { el: leftBtn, key: 'left' }, 
+                { el: rightBtn, key: 'right' },
+                { el: forwardBtn, key: 'throttle' }, 
+                { el: reverseBtn, key: 'reverse' }
+            ];
+            
+            buttonMappings.forEach(btnConfig => {
+                if (btnConfig.el) {
+                    const setActive = (active) => {
+                        currentControls[btnConfig.key] = active;
+                        btnConfig.el.classList.toggle('active', active); 
+                        updateSteeringWheel(); // Update steering wheel rotation
+                        sendControls();
+                    };
+                    
+                    btnConfig.el.addEventListener('mousedown', (e) => { if(e.button === 0) { setActive(true); } });
+                    btnConfig.el.addEventListener('mouseup', (e) => { if(e.button === 0) { setActive(false); } });
+                    btnConfig.el.addEventListener('mouseleave', (e) => { if (currentControls[btnConfig.key] && e.buttons === 1) { setActive(false); } });
+                    btnConfig.el.addEventListener('touchstart', (e) => { e.preventDefault(); setActive(true); });
+                    btnConfig.el.addEventListener('touchend', (e) => { e.preventDefault(); setActive(false); });
+                    btnConfig.el.addEventListener('touchcancel', (e) => { e.preventDefault(); setActive(false); });
+                }
+            });
+        }
+
+        function updateSpeedometer(speedKmh, hasBoost) {
+            if (speedValue) {
+                if (hasBoost) {
+                    speedValue.textContent = "BOOST";
+                    speedValue.style.color = "#f59e0b";
+                } else {
+                    speedValue.textContent = speedKmh;
+                    speedValue.style.color = "#22c55e";
+                }
+            }
+        }
+
+        function connectToServer() {
+            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const serverAddress = `${wsProtocol}//${window.location.hostname}:8080`; 
+            
+            if(statusMessage) statusMessage.textContent = `Connecting to ${serverAddress}...`;
+            if(joinGameButton) joinGameButton.disabled = true;
+            socket = new WebSocket(serverAddress);
+
+            socket.onopen = () => {
+                console.log('Controller: Connected.');
+                if(statusMessage) statusMessage.textContent = 'Connected! Sending setup...';
+                const selectedCar = carAssets[currentCarIndex];
+                const setupData = {
+                    type: 'playerSetup',
+                    name: selectedName,
+                    carId: selectedCar.id
+                };
+                socket.send(JSON.stringify(setupData));
+            };
+
+            socket.onmessage = (event) => { 
+                console.log('Controller: Message from server:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'welcome') {
+                        myClientId = message.clientId;
+                        if(statusMessage) statusMessage.textContent = `Joined as Player ${myClientId}!`;
+                        showControllerScreen();
+                    } else if (message.type === 'gameStateUpdate') {
+                        // Find my player data and update speedometer
+                        if (message.players && myClientId !== null) {
+                            const myPlayer = message.players.find(p => p.id === myClientId);
+                            if (myPlayer) {
+                                // Convert server speed to km/h (MAX_SPEED = 4.0 = 130km/h)
+                                const speedKmh = Math.round(Math.abs(myPlayer.speed || 0) * 32.5);
+                                updateSpeedometer(speedKmh, myPlayer.hasBoost);
+                            }
+                        }
+                    } else if (message.type === 'error') { 
+                        if(statusMessage) statusMessage.textContent = `Error: ${message.message}`;
+                        if(joinGameButton) joinGameButton.disabled = false; 
+                    }
+                } catch (e) { console.error("Controller: Error parsing server msg", e); }
+            };
+            socket.onerror = (error) => { 
+                console.error('Controller: WebSocket error:', error);
+                if(statusMessage) statusMessage.textContent = 'Connection error. Is game server running?';
+                if(joinGameButton) joinGameButton.disabled = false;
+            };
+            socket.onclose = () => { 
+                console.log('Controller: Disconnected.');
+                if(statusMessage) statusMessage.textContent = 'Disconnected. Refresh to rejoin.';
+                if(joinGameButton) joinGameButton.disabled = false; 
+                myClientId = null;
+                if(controllerScreen) controllerScreen.style.display = 'none'; 
+                if(setupScreen) setupScreen.style.display = 'flex';
+                if(mainTitle) mainTitle.textContent = "Racer Controller"; 
+                
+                // Reset state classes
+                document.body.classList.remove('controller-active');
+                const container = document.querySelector('.container');
+                const rotationMessage = document.querySelector('.rotation-message');
+                const dashboardContainer = document.querySelector('.dashboard-container');
+                const landscapeUI = document.querySelector('.landscape-ui');
+                
+                if (container) {
+                    container.classList.remove('show-setup', 'hide-in-landscape');
+                }
+                if (rotationMessage) rotationMessage.classList.remove('show-rotation');
+                if (dashboardContainer) dashboardContainer.classList.remove('show-dashboard');
+                if (landscapeUI) landscapeUI.classList.remove('show-dashboard');
+            };
+        }
+
+        if(joinGameButton) joinGameButton.addEventListener('click', () => {
+            validateNameAndControls(); 
+            if(joinGameButton.disabled) return; 
+            connectToServer();
+        });
+        
+        // Handle both disconnect buttons
+        if(disconnectButton) disconnectButton.addEventListener('click', () => { if (socket) socket.close(); });
+        if(disconnectBtnLandscape) disconnectBtnLandscape.addEventListener('click', () => { if (socket) socket.close(); });
+
+        // Show rotation message function (placeholder)
+        function showRotationMessage() {
+            // The rotation message is handled by CSS media queries
+            console.log('Orientation check triggered');
+        }
+
+        // Initialize
+        updateCarPreview(); 
+        validateNameAndControls(); 
+    </script>
+</body>
+</html>
+
