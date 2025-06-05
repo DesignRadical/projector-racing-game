@@ -184,6 +184,12 @@
             .ctrl-btn:hover {
                 transform: translateZ(0) !important;
                 box-shadow: 0 12px 24px rgba(0,0,0,0.4) !important;
+                transition: none !important;
+            }
+            
+            /* Disable ALL transitions on touch devices to prevent button movement */
+            .ctrl-btn {
+                transition: none !important;
             }
         }
         
@@ -415,6 +421,12 @@
             .ctrl-btn.portrait-mode:focus,
             .ctrl-btn.portrait-mode:hover {
                 transform: translateZ(0) !important;
+                transition: none !important;
+            }
+            
+            /* Disable ALL transitions on portrait mode touch devices */
+            .ctrl-btn.portrait-mode {
+                transition: none !important;
             }
         }
         
@@ -487,8 +499,9 @@
         .blinking-text { animation: blinker 1.5s linear infinite; }
         @keyframes blinker { 50% { color: #f59e0b; text-shadow: 0 0 5px #f59e0b;} }
 
+        /* Protect button animations from touch device restrictions */
         #nextCarButton.pulsing-button {
-            animation: pulseIconYellow 1.5s infinite;
+            animation: pulseIconYellow 1.5s infinite !important;
         }
         @keyframes pulseIconYellow {
             0%   { color: white; transform: scale(1); }
@@ -614,7 +627,7 @@
                         <img id="carPreviewImage" src="" alt="Car Preview" />
                     </div>
                     <div class="car-nav-button-container">
-                        <button id="nextCarButton"><i class="fas fa-chevron-right"></i></button>
+                        <button id="nextCarButton" class="pulsing-button"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
                 <div id="carNameDisplay">Loading...</div>
