@@ -216,10 +216,10 @@
             background-color: #2563eb;
         }
         
-        /* Drive buttons - positioned with exactly 5px spacing */
+        /* Drive buttons - positioned with exactly 5px spacing, moved up by 9vh */
         .btn-forward {
             right: 5vw;
-            top: calc(50% - 17.1vh - 2.5px); /* Positioned above center with 5px total gap */
+            top: calc(50% - 17.1vh - 2.5px - 9vh); /* Positioned above center with 5px total gap, moved up 9vh */
             transform: translateY(-50%);
             background-color: #22c55e;
         }
@@ -230,7 +230,7 @@
         
         .btn-reverse {
             right: 5vw;
-            top: calc(50% + 17.1vh + 2.5px); /* Positioned below center with 5px total gap */
+            top: calc(50% + 17.1vh + 2.5px - 9vh); /* Positioned below center with 5px total gap, moved up 9vh */
             transform: translateY(-50%);
             background-color: #f59e0b;
         }
