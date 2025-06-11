@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
     <title>Racer Controller</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
@@ -12,6 +12,30 @@
             margin: 0;
             padding: 0;
             overflow: hidden; 
+        }
+        
+        /* Comprehensive iOS zoom prevention */
+        html {
+            -webkit-text-size-adjust: 100%;
+            -moz-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+        
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Force disable double-tap zoom on iOS */
+        body {
+            touch-action: manipulation;
+            -ms-touch-action: manipulation;
         }
         
         body { 
@@ -709,6 +733,46 @@
     </div>
 
     <script>
+        // Comprehensive viewport enforcement for iOS zoom prevention
+        (function() {
+            function enforceViewport() {
+                const viewport = document.querySelector('meta[name=viewport]');
+                if (viewport) {
+                    viewport.setAttribute('content', 
+                        'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover'
+                    );
+                }
+            }
+            
+            // Enforce on load and orientation change
+            enforceViewport();
+            window.addEventListener('orientationchange', function() {
+                setTimeout(enforceViewport, 100);
+            });
+            
+            // Prevent zoom via touch events (double tap, pinch)
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+            
+            // Prevent pinch zoom
+            document.addEventListener('touchmove', function(event) {
+                if (event.touches.length > 1) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Prevent gesture events
+            document.addEventListener('gesturestart', function(event) {
+                event.preventDefault();
+            }, false);
+        })();
+        
         let socket;
         let selectedName = '';
         let myClientId = null;
