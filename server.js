@@ -107,7 +107,17 @@ const ACCELERATION = 0.05; // Reduced from 0.08 to 0.05
 const REVERSE_ACCELERATION = 0.05; // Reduced from 0.08 to 0.05
 const DECELERATION = 0.045; // Reduced from 0.07 to 0.045
 const TURN_SPEED_FACTOR = 0.035; // Reduced from 0.05 to 0.035 (30% reduction for less oversteering)
-const DRIFT_FACTOR = 0.12; // Reduced from 0.15 to 0.12
+const DRIFT_FACTOR = 0.12; // Base drift factor
+const CAR_DRIFT_FACTORS = [
+    0.06,  // Car 1 - Least drift
+    0.08,  // Car 2
+    0.10,  // Car 3
+    0.12,  // Car 4 - Default drift (same as before)
+    0.14,  // Car 5
+    0.16,  // Car 6
+    0.18,  // Car 7
+    0.20   // Car 8 - Most drift
+];
 const WALL_SLIDE_SPEED_REDUCTION = 0.8; // Changed from 0.5 to 0.8 - now keeps 80% speed instead of 50%
 const MIN_SLIDE_SPEED = 0.5; 
 const WALL_NUDGE_AWAY_FORCE = 0.003; // Reduced from 0.008 to 0.003 - almost no physical nudging
@@ -230,7 +240,11 @@ function updatePlayerState(player, deltaTime = TARGET_FRAME_TIME) {
     
     if (!player.isBouncing) { 
         const angleDifference = normalizeAngle(player.angle - player.velocityAngle);
-        let effectiveDriftFactor = DRIFT_FACTOR * (Math.abs(intendedSpeed) / MAX_SPEED) * clampedRatio;
+        // Use car-specific drift factor based on carId (fallback to default if carId is invalid)
+        const carDriftFactor = (player.carId >= 1 && player.carId <= 8) ? 
+            CAR_DRIFT_FACTORS[player.carId - 1] : 
+            DRIFT_FACTOR;
+        let effectiveDriftFactor = carDriftFactor * (Math.abs(intendedSpeed) / MAX_SPEED) * clampedRatio;
         if (intendedSpeed < 0) effectiveDriftFactor *= 0.2; // Reduced from 0.5 to 0.2 - much less sensitive drift in reverse
         player.velocityAngle += angleDifference * effectiveDriftFactor; 
     }
